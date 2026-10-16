@@ -21,7 +21,7 @@ TECH STACK
 - Sentiment: FinBERT
 - Prediction model: XGBoost baseline, optionally LSTM as a stretch goal
 - Reasoning: LLM API call with a structured prompt template
-- Storage: SQLite
+- Storage: MySQL
 - Backtesting: custom engine computing returns, win rate, Sharpe ratio
 
 BEFORE WRITING ANY CODE

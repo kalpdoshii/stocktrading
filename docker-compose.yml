@@ -1,0 +1,55 @@
+# ============================================================
+# Docker Compose — MySQL for AI Trading Assistant
+# ============================================================
+# Usage:
+#   docker-compose up -d        (start MySQL)
+#   docker-compose down          (stop MySQL)
+#   docker-compose down -v       (stop + delete data)
+# ============================================================
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: trading_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: trading_assistant
+      MYSQL_USER: trading_user
+      MYSQL_PASSWORD: trading_password
+    ports:
+      - "3306:3306"
+    volumes:
+      # Persist data across container restarts
+      - mysql_data:/var/lib/mysql
+      # Auto-run schema init on first start
+      - ./backend/scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+
+  backend:
+    build: ./backend
+    container_name: trading_backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      MYSQL_HOST: mysql
+    depends_on:
+      - mysql
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    container_name: trading_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  mysql_data:

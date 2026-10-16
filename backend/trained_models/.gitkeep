@@ -1,0 +1,2 @@
+# This directory stores trained model files (.joblib)
+# Files here are gitignored — retrain locally after cloning

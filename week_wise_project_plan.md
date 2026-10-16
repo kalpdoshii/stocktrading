@@ -7,15 +7,20 @@
 ### Phase 1 — Foundation (Weeks 1–4)
 
 **Week 1 — Scope & setup**
-- Finalize stock universe (e.g. Nifty 50 subset or 8–10 popular US stocks)
+- Finalize stock universe: AAPL, GOOGL, MSFT, TSLA, AMZN, META, NVDA, JPM
 - Set up GitHub repo, folder structure, virtual env, requirements.txt
-- Quick literature/GitHub scan of similar projects so you know what to *not* copy
+- Quick literature/GitHub scan of similar projects: most examples are React + FastAPI stock dashboards with sentiment/news analysis, so keep this project modular and differentiated with the reasoning layer, backtesting, and MySQL-backed pipeline
+
+**Week 1 status**
+- Scope is now pinned to an 8-stock US starter universe
+- Project scaffolding is already present in the repo
+- Similar-project references were checked to avoid copying a generic dashboard-only or notebook-only structure
 
 **Week 2 — Data collection scripts**
 - `yfinance` script to pull historical OHLCV price data
 - `newsapi` script to pull headlines per stock
 - `praw` (Reddit API) script to pull posts/comments mentioning each stock
-- Store everything in SQLite with a clean schema
+- Store everything in MySQL with a clean schema
 
 **Week 3 — Cleaning & EDA**
 - Handle missing values, align dates across price/news/reddit data
