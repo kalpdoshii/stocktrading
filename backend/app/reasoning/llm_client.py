@@ -99,6 +99,7 @@ def _call_llm(prompt: str) -> str:
 def _call_gemini(prompt: str) -> str:
     """Call Google Gemini API."""
     try:
+        # pyrefly: ignore[missing-import]
         import google.generativeai as genai
 
         genai.configure(api_key=GEMINI_API_KEY)
@@ -129,6 +130,7 @@ def _call_gemini(prompt: str) -> str:
 def _call_openai(prompt: str) -> str:
     """Call OpenAI API (fallback option)."""
     try:
+        # pyrefly: ignore[missing-import]
         from openai import OpenAI
 
         client = OpenAI(api_key=OPENAI_API_KEY)
@@ -177,7 +179,12 @@ def _fallback_explanation(prompt: str) -> str:
 
     for line in lines:
         if "Direction:" in line:
-            signal = "UP" if "UP" in line else "DOWN"
+            if "HOLD" in line:
+                signal = "HOLD"
+            elif "DOWN" in line:
+                signal = "DOWN"
+            else:
+                signal = "UP"
         if "Confidence:" in line:
             confidence = line.split(":")[-1].strip().replace("%", "")
         if "analysis for" in line:
@@ -185,14 +192,18 @@ def _fallback_explanation(prompt: str) -> str:
             if len(parts) > 1:
                 ticker = parts[1].split(",")[0].strip()
 
-    direction = "upward" if signal == "UP" else "downward"
-    sentiment = "positive" if signal == "UP" else "cautious"
+    if signal == "UP":
+        movement_desc = "an upward movement"
+        sentiment_desc = "recent technical indicator trends and positive market sentiment"
+    elif signal == "DOWN":
+        movement_desc = "a downward movement"
+        sentiment_desc = "bearish technical momentum and cautious market sentiment"
+    else:
+        movement_desc = "a neutral / sideways stance (HOLD)"
+        sentiment_desc = "mixed technical indicators and balanced market sentiment"
 
     return (
-        f"The model predicts an {direction} movement for {ticker} "
+        f"The model predicts {movement_desc} for {ticker} "
         f"with {confidence}% confidence. This prediction is primarily "
-        f"driven by recent technical indicator trends and {sentiment} "
-        f"market sentiment from news and social media analysis. "
-        f"Please note this is a model prediction and should not be "
-        f"treated as financial advice."
+        f"driven by {sentiment_desc} from news and price data."
     )

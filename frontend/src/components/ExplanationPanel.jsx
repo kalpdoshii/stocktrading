@@ -121,11 +121,6 @@ export default function ExplanationPanel({ ticker }) {
         </div>
       )}
 
-      {/* Disclaimer */}
-      <div className="explanation-panel__disclaimer">
-        ⓘ This explanation is AI-generated and should not be considered financial advice.
-        The model's predictions are based on historical patterns and may not reflect future performance.
-      </div>
 
       {/* Blink keyframe (inline, needed for cursor) */}
       <style>{`

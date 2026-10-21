@@ -95,19 +95,33 @@ class SentimentScore(Base):
     sample_count   = Column(Integer)
     created_at     = Column(TIMESTAMP, server_default=func.now())
 
+    __table_args__ = (
+        UniqueConstraint("ticker", "date", "source_type", name="uq_ticker_date_src"),
+        {"mysql_engine": "InnoDB"},
+    )
+
 
 class Prediction(Base):
-    """Model predictions (UP/DOWN) for each ticker/date."""
+    """Model predictions (UP/DOWN/HOLD) for each ticker/date."""
     __tablename__ = "predictions"
 
-    id            = Column(Integer, primary_key=True, autoincrement=True)
-    ticker        = Column(String(20), nullable=False)
-    date          = Column(Date, nullable=False)
-    model_version = Column(String(50), nullable=False)
-    signal_dir    = Column(Enum("UP", "DOWN"), nullable=False)
-    confidence    = Column(Float)
-    features_json = Column(JSON)   # top feature values snapshot
-    created_at    = Column(TIMESTAMP, server_default=func.now())
+    id                    = Column(Integer, primary_key=True, autoincrement=True)
+    ticker                = Column(String(20), nullable=False)
+    date                  = Column(Date, nullable=False)
+    model_version         = Column(String(50), nullable=False)
+    signal_dir            = Column(Enum("UP", "DOWN", "HOLD"), nullable=False, default="HOLD")
+    confidence            = Column(Float)
+    raw_confidence        = Column(Float)
+    calibrated_confidence = Column(Float)
+    is_calibrated         = Column(Integer, default=0)
+    features_json         = Column(JSON)   # top feature values snapshot
+    shap_values_json      = Column(JSON)   # SHAP feature attributions
+    created_at            = Column(TIMESTAMP, server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("ticker", "date", "model_version", name="uq_pred"),
+        {"mysql_engine": "InnoDB"},
+    )
 
 
 class LLMCache(Base):
@@ -148,12 +162,46 @@ class ModelMetric(Base):
     """Training evaluation metrics for model comparison."""
     __tablename__ = "model_metrics"
 
-    id              = Column(Integer, primary_key=True, autoincrement=True)
-    model_version   = Column(String(50), nullable=False, index=True)
-    ticker          = Column(String(20))   # NULL = all tickers combined
-    accuracy        = Column(Float)
-    precision_score = Column(Float)
-    recall_score    = Column(Float)
-    f1_score        = Column(Float)
-    roc_auc         = Column(Float)
-    train_date      = Column(TIMESTAMP, server_default=func.now())
+    id                         = Column(Integer, primary_key=True, autoincrement=True)
+    model_version              = Column(String(50), nullable=False, index=True)
+    ticker                     = Column(String(20))   # NULL = all tickers combined
+    accuracy                   = Column(Float)
+    precision_score            = Column(Float)
+    recall_score               = Column(Float)
+    f1_score                   = Column(Float)
+    roc_auc                    = Column(Float)
+    dataset_start              = Column(Date)
+    dataset_end                = Column(Date)
+    test_start                 = Column(Date)
+    test_end                   = Column(Date)
+    train_samples              = Column(Integer)
+    test_samples               = Column(Integer)
+    majority_baseline_accuracy = Column(Float)
+    simple_baseline_accuracy   = Column(Float)
+    brier_score                = Column(Float)
+    pr_auc                     = Column(Float)
+    class_balance_json         = Column(JSON)
+    calibration_metrics_json   = Column(JSON)
+    feature_importances_json   = Column(JSON)
+    validation_type            = Column(String(50), default="holdout")
+    train_date                 = Column(TIMESTAMP, server_default=func.now())
+
+
+class ExperimentRecord(Base):
+    """Detailed experiment tracking log for quantitative research."""
+    __tablename__ = "experiment_records"
+
+    id                    = Column(Integer, primary_key=True, autoincrement=True)
+    experiment_id         = Column(String(64), nullable=False, unique=True)
+    model_name            = Column(String(50), nullable=False)
+    model_version         = Column(String(50), nullable=False, index=True)
+    ticker                = Column(String(20), index=True)
+    validation_strategy   = Column(String(50), nullable=False)
+    dataset_start         = Column(Date)
+    dataset_end           = Column(Date)
+    parameters_json       = Column(JSON)
+    feature_names_json    = Column(JSON)
+    metrics_json          = Column(JSON)
+    baseline_metrics_json = Column(JSON)
+    artifact_path         = Column(String(255))
+    created_at            = Column(TIMESTAMP, server_default=func.now())

@@ -39,17 +39,17 @@ TICKERS = [
 PRICE_HISTORY_YEARS = int(os.getenv("PRICE_HISTORY_YEARS", "2"))
 
 # ---- NewsAPI ----
-NEWSAPI_KEY = os.getenv("NEWSAPI_KEY", "")
+NEWSAPI_KEY = os.getenv("NEWSAPI_KEY", "").strip()
 
 # ---- Reddit (PRAW) ----
-REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID", "")
-REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET", "")
-REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT", "TradingAssistant/1.0")
+REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID", "").strip()
+REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET", "").strip()
+REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT", "TradingAssistant/1.0").strip()
 
 # ---- LLM ----
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini")  # 'gemini' or 'openai'
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini").strip()  # 'gemini' or 'openai'
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 
 # ---- Reddit Subreddits to Search ----
 SUBREDDITS = ["wallstreetbets", "stocks", "investing"]

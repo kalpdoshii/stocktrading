@@ -37,7 +37,7 @@ function CustomTooltip({ active, payload, label }) {
 
 export default function PriceChart({ ticker }) {
   const { data: priceData, loading: priceLoading } = useApi(getPriceData, ticker);
-  const { data: prediction, loading: predLoading } = useApi(getPrediction, ticker);
+  const { data: prediction } = useApi(getPrediction, ticker);
 
   if (priceLoading) {
     return (

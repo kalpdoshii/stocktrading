@@ -89,7 +89,7 @@ def main():
     else:
         run_full_refresh(tickers)
 
-    print("\n✓ Pipeline complete!")
+    print("\n[OK] Pipeline complete!")
 
 
 if __name__ == "__main__":

@@ -71,7 +71,12 @@ def build_prompt(
     confidence = round(prediction["confidence"] * 100, 1)
 
     # Signal description
-    signal_description = "up" if signal == "UP" else "down"
+    if signal == "UP":
+        signal_description = "up"
+    elif signal == "DOWN":
+        signal_description = "down"
+    else:
+        signal_description = "sideways / neutral (HOLD due to uncertain signal or low confidence)"
 
     # Format top features
     features_section = _format_features(prediction.get("top_features", []))
@@ -101,7 +106,7 @@ def build_prompt(
 
 
 def _format_features(features: list[dict]) -> str:
-    """Format top features into a readable list."""
+    """Format top features into a readable list with SHAP importance and push direction."""
     if not features:
         return "- No feature data available"
 
@@ -110,13 +115,19 @@ def _format_features(features: list[dict]) -> str:
         name = feat.get("name", "unknown")
         value = feat.get("value", "N/A")
         importance = feat.get("importance", 0)
+        shap_val = feat.get("shap_value")
+        direction = feat.get("direction")
 
         # Make feature names more readable
         readable_name = _humanize_feature_name(name)
-        lines.append(
-            f"- {readable_name}: {value} "
-            f"(importance rank: #{i}, weight: {importance:.3f})"
-        )
+        if shap_val is not None and direction:
+            details = f"(rank #{i}, SHAP: {shap_val:+.4f}, {direction} push)"
+        elif shap_val is not None:
+            details = f"(rank #{i}, SHAP: {shap_val:+.4f})"
+        else:
+            details = f"(importance rank: #{i}, weight: {importance:.3f})"
+
+        lines.append(f"- {readable_name}: {value} {details}")
 
     return "\n".join(lines)
 

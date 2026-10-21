@@ -39,13 +39,14 @@ def fetch_prices(tickers: list[str] | None = None, years: int | None = None) -> 
     tickers = tickers or TICKERS
     years = years or PRICE_HISTORY_YEARS
 
-    # Calculate date range
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=years * 365)
+    # Calculate date range (end_date + 1 day because yfinance 'end' is exclusive)
+    now = datetime.now()
+    end_date = now + timedelta(days=1)
+    start_date = now - timedelta(days=years * 365)
 
     logger.info(
         f"Fetching price data for {len(tickers)} tickers "
-        f"from {start_date.date()} to {end_date.date()}"
+        f"from {start_date.date()} to {now.date()}"
     )
 
     results = {}

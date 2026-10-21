@@ -1,99 +1,95 @@
 /**
- * App.jsx — Main Dashboard Application
- * ========================================
- * Root component that assembles all dashboard panels.
- * Manages the selected ticker state and passes it to children.
+ * App.jsx — StockTrading Desktop Executive Platform
+ * ==================================================
+ * Desktop layout featuring a top Header Navbar with screen tab navigation,
+ * where each screen block is dedicated to 1 full screen.
  */
 
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { useApi } from './hooks/useApi';
+import { getTickers } from './services/api';
 import Navbar from './components/Navbar';
-import TickerSelector from './components/TickerSelector';
-import PriceChart from './components/PriceChart';
-import SentimentGauge from './components/SentimentGauge';
-import ExplanationPanel from './components/ExplanationPanel';
-import BacktestResults from './components/BacktestResults';
-import MarketOverview from './components/MarketOverview';
-import MarketNews from './components/MarketNews';
-import PredictionHistory from './components/PredictionHistory';
-import Watchlist from './components/Watchlist';
-import RefreshControl from './components/RefreshControl';
+import IndianMarketOverview from './components/IndianMarketOverview';
+import MarketNewsCard from './components/MarketNewsCard';
+import StockAnalysisCard from './components/StockAnalysisCard';
+import SentimentAnalysisCard from './components/SentimentAnalysisCard';
+import BacktestResultsCard from './components/BacktestResultsCard';
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState('overview');
   const [selectedTicker, setSelectedTicker] = useState('RELIANCE.NS');
+  const [watchlist, setWatchlist] = useState(['RELIANCE.NS', 'TCS.NS', 'INFY.NS']);
+
+  const { data: tickersData } = useApi(getTickers);
+  const tickers = tickersData?.tickers || [];
+
+  const toggleWatchlist = (ticker) => {
+    setWatchlist((prev) =>
+      prev.includes(ticker) ? prev.filter((t) => t !== ticker) : [...prev, ticker]
+    );
+  };
+
+  const handleSelectTickerAndAnalyze = (ticker) => {
+    setSelectedTicker(ticker);
+    setActiveTab('analysis');
+  };
 
   return (
-    <div>
-      <Navbar />
+    <div className="desktop-app-container">
+      {/* Top Header Navbar */}
+      <Navbar
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+      />
 
-      <main className="dashboard">
-        <section id="overview" className="dashboard__section">
-          <MarketOverview />
-        </section>
-
-        <section id="market-news" className="dashboard__section">
-          <MarketNews />
-        </section>
-
-        <section id="analysis" className="dashboard__section">
-          <div className="dashboard__header">
-            <div>
-              <h1 style={{
-                fontSize: 'var(--font-size-2xl)',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                marginBottom: '0.25rem',
-              }}>
-                Stock Analysis
-              </h1>
-              <p style={{
-                fontSize: 'var(--font-size-sm)',
-                color: 'var(--text-muted)',
-              }}>
-                AI-powered trend prediction for Indian equities
-              </p>
-            </div>
-            <TickerSelector
-              selected={selectedTicker}
-              onSelect={setSelectedTicker}
+      {/* Main Screen Block (1 screen block contains 1 screen) */}
+      <main className="desktop-main-viewport">
+        {activeTab === 'overview' && (
+          <div className="screen-block fade-in" key="overview">
+            <IndianMarketOverview
+              onSelectTicker={handleSelectTickerAndAnalyze}
             />
           </div>
+        )}
 
-          <Watchlist selected={selectedTicker} onSelect={setSelectedTicker} />
-          <RefreshControl />
-
-          <div className="dashboard__grid dashboard__grid--full">
-            <PriceChart ticker={selectedTicker} />
+        {activeTab === 'news' && (
+          <div className="screen-block fade-in" key="news">
+            <MarketNewsCard
+              onSelectTicker={handleSelectTickerAndAnalyze}
+            />
           </div>
+        )}
 
-          <div className="dashboard__grid dashboard__grid--full">
-            <PredictionHistory ticker={selectedTicker} />
+        {activeTab === 'analysis' && (
+          <div className="screen-block fade-in" key="analysis">
+            <StockAnalysisCard
+              ticker={selectedTicker}
+              onSelectTicker={setSelectedTicker}
+              watchlist={watchlist}
+              onToggleWatchlist={toggleWatchlist}
+            />
           </div>
-        </section>
+        )}
 
-        <section id="sentiment" className="dashboard__section">
-          <div className="dashboard__grid">
-            <SentimentGauge ticker={selectedTicker} />
-            <ExplanationPanel ticker={selectedTicker} />
+        {activeTab === 'sentiment' && (
+          <div className="screen-block fade-in" key="sentiment">
+            <SentimentAnalysisCard
+              ticker={selectedTicker}
+              onSelectTicker={setSelectedTicker}
+              tickers={tickers}
+            />
           </div>
-        </section>
+        )}
 
-        <section id="backtest" className="dashboard__section">
-          <div className="dashboard__grid dashboard__grid--full">
-            <BacktestResults ticker={selectedTicker} />
+        {activeTab === 'backtest' && (
+          <div className="screen-block fade-in" key="backtest">
+            <BacktestResultsCard
+              ticker={selectedTicker}
+              onSelectTicker={setSelectedTicker}
+              tickers={tickers}
+            />
           </div>
-        </section>
-
-        {/* Footer */}
-        <footer style={{
-          textAlign: 'center',
-          padding: '1.5rem',
-          fontSize: '0.75rem',
-          color: 'var(--text-muted)',
-          borderTop: '1px solid var(--border-subtle)',
-        }}>
-          AI Trading Assistant — Final Year Project •
-          Built with FastAPI, XGBoost, FinBERT & React
-        </footer>
+        )}
       </main>
     </div>
   );

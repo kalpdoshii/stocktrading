@@ -215,6 +215,83 @@ def build_feature_matrix(
     return X_train, X_test, y_train, y_test, available_features
 
 
+def build_feature_dataframe(
+    ticker: str,
+    include_sentiment: bool = False,
+) -> tuple[pd.DataFrame, list[str]]:
+    """
+    Build a clean DataFrame containing dates, features, and target without splitting.
+    Used for chronological walk-forward validation and date-aware training.
+
+    Returns:
+        Tuple of (df_clean, feature_names)
+    """
+    df = load_price_data(ticker)
+    if df.empty:
+        raise ValueError(f"No price data available for {ticker}")
+
+    df = compute_indicators(df)
+    feature_names = BASELINE_FEATURES.copy()
+
+    if include_sentiment:
+        sentiment_df = load_sentiment_data(ticker)
+        if not sentiment_df.empty:
+            df = df.merge(sentiment_df, on="date", how="left")
+            for col in SENTIMENT_FEATURES:
+                if col in df.columns:
+                    df[col] = df[col].ffill().fillna(0.0)
+            feature_names.extend(SENTIMENT_FEATURES)
+
+    # Next-day direction target
+    df["target"] = (df["close"].shift(-1) > df["close"]).astype(int)
+    df = df.iloc[:-1]
+
+    available_features = [f for f in feature_names if f in df.columns]
+    cols_needed = ["date", "target"] + available_features
+
+    df_clean = df.dropna(subset=cols_needed).reset_index(drop=True)
+    if len(df_clean) < 50:
+        raise ValueError(f"Only {len(df_clean)} clean rows for {ticker} — need at least 50")
+
+    return df_clean, available_features
+
+
+def build_aligned_paired_matrices(
+    ticker: str,
+    test_ratio: float = 0.2,
+) -> dict:
+    """
+    Build baseline (price-only) and sentiment-augmented feature matrices
+    guaranteed to share the EXACT same rows, labels, dates, and test boundaries.
+
+    Returns:
+        Dict with keys:
+          X_train_base, X_test_base, X_train_sent, X_test_sent,
+          y_train, y_test, train_dates, test_dates,
+          baseline_features, sentiment_features
+    """
+    df_sent, sent_features = build_feature_dataframe(ticker, include_sentiment=True)
+    base_features = [f for f in BASELINE_FEATURES if f in df_sent.columns]
+
+    split_idx = int(len(df_sent) * (1 - test_ratio))
+
+    y = df_sent["target"].values
+    dates = df_sent["date"].values
+
+    return {
+        "X_train_base": df_sent[base_features].values[:split_idx],
+        "X_test_base": df_sent[base_features].values[split_idx:],
+        "X_train_sent": df_sent[sent_features].values[:split_idx],
+        "X_test_sent": df_sent[sent_features].values[split_idx:],
+        "y_train": y[:split_idx],
+        "y_test": y[split_idx:],
+        "train_dates": dates[:split_idx],
+        "test_dates": dates[split_idx:],
+        "baseline_features": base_features,
+        "sentiment_features": sent_features,
+    }
+
+
 def build_multi_ticker_matrix(
     tickers: list[str],
     include_sentiment: bool = False,
@@ -222,33 +299,43 @@ def build_multi_ticker_matrix(
 ) -> tuple:
     """
     Build a combined feature matrix across multiple tickers.
-    Useful for training a single model on all stocks.
+    Splits along aligned date boundaries to minimize cross-sectional temporal leakage.
 
     Returns:
-        Same tuple as build_feature_matrix but with data from all tickers.
+        Tuple of (X_train, X_test, y_train, y_test, feature_names)
     """
-    all_X_train, all_X_test = [], []
-    all_y_train, all_y_test = [], []
+    ticker_dfs = []
     feature_names = None
 
     for ticker in tickers:
         try:
-            X_tr, X_te, y_tr, y_te, feat = build_feature_matrix(
-                ticker, include_sentiment, test_ratio
-            )
-            all_X_train.append(X_tr)
-            all_X_test.append(X_te)
-            all_y_train.append(y_tr)
-            all_y_test.append(y_te)
-
+            df, feats = build_feature_dataframe(ticker, include_sentiment=include_sentiment)
+            df["ticker"] = ticker
+            ticker_dfs.append(df)
             if feature_names is None:
-                feature_names = feat
-
+                feature_names = feats
         except ValueError as e:
             logger.warning(f"Skipping {ticker}: {e}")
 
-    if not all_X_train:
+    if not ticker_dfs:
         raise ValueError("No valid data for any ticker")
+
+    # Determine global split date based on 80th percentile of all dates
+    combined_dates = np.concatenate([df["date"].values for df in ticker_dfs])
+    global_split_date = pd.Series(combined_dates).quantile(1 - test_ratio)
+
+    all_X_train, all_X_test = [], []
+    all_y_train, all_y_test = [], []
+
+    for df in ticker_dfs:
+        train_mask = df["date"] < global_split_date
+        test_mask = df["date"] >= global_split_date
+
+        if train_mask.sum() > 10 and test_mask.sum() > 5:
+            all_X_train.append(df.loc[train_mask, feature_names].values)
+            all_X_test.append(df.loc[test_mask, feature_names].values)
+            all_y_train.append(df.loc[train_mask, "target"].values)
+            all_y_test.append(df.loc[test_mask, "target"].values)
 
     return (
         np.vstack(all_X_train),
@@ -257,3 +344,4 @@ def build_multi_ticker_matrix(
         np.concatenate(all_y_test),
         feature_names,
     )
+

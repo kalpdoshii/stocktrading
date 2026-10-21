@@ -28,9 +28,19 @@ def _run_refresh() -> None:
     try:
         from app.data_pipeline.refresh import run_full_refresh
         from app.sentiment.aggregator import aggregate_sentiment
+        from app.config import TICKERS
+        from app.ml.predict import predict_ticker
 
         run_full_refresh()
         aggregate_sentiment()
+
+        # Update predictions for all configured tickers
+        for t in TICKERS:
+            try:
+                predict_ticker(t, save_to_db=True)
+            except Exception:
+                pass
+
         _refresh_state["status"] = "completed"
     except Exception as error:
         _refresh_state.update({"status": "failed", "error": str(error)})

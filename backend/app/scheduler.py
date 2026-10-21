@@ -34,6 +34,33 @@ def _seconds_until_next_run() -> float:
     return max(1.0, (target - now).total_seconds())
 
 
+def _check_and_run_initial_refresh() -> None:
+    """Check on startup if market has closed today and today's price data is missing."""
+    try:
+        from app.database import SessionLocal
+        from app.models import PriceData
+        from sqlalchemy import func
+
+        db = SessionLocal()
+        latest = db.query(func.max(PriceData.date)).scalar()
+        db.close()
+
+        timezone = ZoneInfo(AUTO_REFRESH_TIMEZONE)
+        now = datetime.now(timezone)
+        today = now.date()
+
+        # If today is a weekday, market has closed (>= 16:00 IST), and today's data is missing:
+        if now.weekday() < 5 and now.hour >= AUTO_REFRESH_HOUR and (not latest or latest < today):
+            logger.info(
+                "Catch-up refresh triggered: latest stored date is %s, today is %s",
+                latest,
+                today,
+            )
+            _run_refresh()
+    except Exception as e:
+        logger.warning("Startup refresh check warning: %s", e)
+
+
 def _scheduler_loop() -> None:
     logger.info(
         "Auto refresh enabled: weekdays at %02d:%02d %s",
@@ -41,6 +68,9 @@ def _scheduler_loop() -> None:
         AUTO_REFRESH_MINUTE,
         AUTO_REFRESH_TIMEZONE,
     )
+    # Check if a catch-up run is needed immediately upon startup
+    _check_and_run_initial_refresh()
+
     while not _stop_event.wait(_seconds_until_next_run()):
         if _refresh_state["status"] != "running":
             logger.info("Starting scheduled Indian market refresh")
